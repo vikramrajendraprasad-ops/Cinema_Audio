@@ -1,10 +1,13 @@
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.cinema_audio">
 
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
+    <!-- Added android:name="${applicationName}" here -->
     <application
+        android:name="${applicationName}"
         android:label="Cinema Audio"
         android:icon="@mipmap/ic_launcher">
 
@@ -21,8 +24,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
+            
         </activity>
+
+        <!-- Added this meta-data tag for V2 embedding -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
 
     </application>
 
