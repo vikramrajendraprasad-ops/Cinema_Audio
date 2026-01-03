@@ -1,5 +1,5 @@
 name: cinema_audio
-description: Cinema Audio – External FFmpeg-based audio processor
+description: Audio Cinema Studio – External FFmpeg processor
 publish_to: "none"
 
 version: 1.0.0+1
@@ -10,13 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # Audio file selection (Android SAF, no permissions needed)
   file_picker: ^6.1.1
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
 
 flutter:
   uses-material-design: true
