@@ -1,6 +1,5 @@
-
-name: cinema_audio
-description: Cinema Audio – FFmpeg based audio processor
+name: audio_cinema_studio
+description: Cinema-grade audio processing app powered by an external FFmpeg engine
 publish_to: "none"
 
 version: 1.0.0+1
@@ -12,8 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Use a modern version (5.5.0 is too old and can break with v1 embedding removal)
-  file_picker: ^8.1.4
+  # File picker (Android-safe, v2 embedding)
+  file_picker: ^8.3.7
+
+  # Launch Termux commands safely
+  android_intent_plus: ^5.3.0
 
 dev_dependencies:
   flutter_test:
