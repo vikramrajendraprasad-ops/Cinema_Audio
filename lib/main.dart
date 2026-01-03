@@ -3,44 +3,46 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
 void main() {
-  runApp(const CinemaAudioApp());
+  runApp(const AudioCinemaApp());
 }
 
-class CinemaAudioApp extends StatelessWidget {
-  const CinemaAudioApp({super.key});
+class AudioCinemaApp extends StatelessWidget {
+  const AudioCinemaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Cinema Audio',
+      title: 'Audio Cinema Studio',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const CinemaHomePage(),
+      home: const CinemaHome(),
     );
   }
 }
 
-class CinemaHomePage extends StatefulWidget {
-  const CinemaHomePage({super.key});
+class CinemaHome extends StatefulWidget {
+  const CinemaHome({super.key});
 
   @override
-  State<CinemaHomePage> createState() => _CinemaHomePageState();
+  State<CinemaHome> createState() => _CinemaHomeState();
 }
 
-class _CinemaHomePageState extends State<CinemaHomePage> {
-  String? selectedFilePath;
+class _CinemaHomeState extends State<CinemaHome> {
+  String status = 'Idle';
+  String? selectedFile;
 
-  Future<void> pickAudioFile() async {
+  Future<void> pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.audio,
     );
 
     if (result != null && result.files.single.path != null) {
       setState(() {
-        selectedFilePath = result.files.single.path!;
+        selectedFile = result.files.single.path!;
+        status = 'Audio Selected';
       });
     }
   }
@@ -49,40 +51,44 @@ class _CinemaHomePageState extends State<CinemaHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cinema Audio Studio'),
-        backgroundColor: Colors.deepPurple.shade100,
+        title: const Text('Audio Cinema Studio'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Select Audio File',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Card(
+              color: Colors.deepPurple.withOpacity(0.1),
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'This app uses an external FFmpeg engine via Termux.\nKeep Termux running in background.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: pickAudioFile,
-              icon: const Icon(Icons.audiotrack),
+              icon: const Icon(Icons.music_note),
               label: const Text('Pick Audio File'),
+              onPressed: pickAudio,
             ),
-
             const SizedBox(height: 20),
-
-            if (selectedFilePath != null) ...[
-              const Text(
-                'Selected file:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 6),
+            Text(
+              'Status: $status',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            if (selectedFile != null) ...[
+              const SizedBox(height: 10),
               Text(
-                selectedFilePath!,
-                style: const TextStyle(fontSize: 13),
+                selectedFile!,
+                style: const TextStyle(fontSize: 12),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ] else
-              const Text('No file selected'),
+            ],
           ],
         ),
       ),
