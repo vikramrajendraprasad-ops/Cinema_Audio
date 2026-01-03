@@ -1,18 +1,7 @@
 
-name: Build Cinema Audio APK
-
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      # Add Java setup. Android builds require a specific Java version (usually 11 or 17).
-      # Without this, you may face Gradle errors on the build server.
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -22,11 +11,12 @@ jobs:
         with:
           channel: stable
           
+      # REPLACE THE OLD "Install deps" STEP WITH THIS BLOCK:
       - name: Install deps
-        run: flutter pub get
+        run: |
+          flutter clean
+          flutter pub get
 
-      # NOTE: This step will only pass if you have committed the 
-      # corrected AndroidManifest.xml to your repository.
       - name: Build debug APK
         run: flutter build apk --debug
 
