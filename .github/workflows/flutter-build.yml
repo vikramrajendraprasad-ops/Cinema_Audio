@@ -1,4 +1,5 @@
-name: Flutter Android Build (Cinema_Audio)
+
+name: Build Cinema Audio APK
 
 on:
   workflow_dispatch:
@@ -8,32 +9,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout your repo (this contains lib/main.dart)
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2️⃣ Install Flutter
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
 
-      # 3️⃣ Flutter doctor
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      # 4️⃣ Get dependencies (file_picker etc.)
-      - name: Flutter pub get
+      - name: Install deps
         run: flutter pub get
 
-      # 5️⃣ Build DEBUG APK (YOUR CODE)
       - name: Build debug APK
         run: flutter build apk --debug
 
-      # 6️⃣ Upload APK
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: Cinema_Audio-debug-apk
+          name: cinema_audio_debug_apk
           path: build/app/outputs/flutter-apk/app-debug.apk
