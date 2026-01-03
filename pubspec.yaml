@@ -1,6 +1,5 @@
-
 name: cinema_audio
-description: Cinema Audio – External FFmpeg processor
+description: Cinema Audio – FFmpeg based audio processor
 publish_to: "none"
 
 version: 1.0.0+1
@@ -11,7 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  file_picker: ^6.1.1
+
+  # ⚠️ IMPORTANT: lock to SAFE version (CI + Android embedding compatible)
+  file_picker: 5.5.0
 
 flutter:
   uses-material-design: true
