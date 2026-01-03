@@ -1,15 +1,15 @@
+
 package com.example.cinema_audio
 
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
 
 class MainActivity : FlutterActivity() {
 
-    private val CHANNEL = "cinema_audio/engine"
+    private val CHANNEL = "cinema/termux"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -19,44 +19,31 @@ class MainActivity : FlutterActivity() {
             CHANNEL
         ).setMethodCallHandler { call, result ->
 
-            if (call.method == "processAudio") {
-                val input = call.argument<String>("inputPath") ?: ""
-                val profile = call.argument<String>("profile") ?: "Dolby"
-                val channels = call.argument<String>("channels") ?: "Stereo"
-                val intensity = call.argument<String>("intensity") ?: "Medium"
+            if (call.method == "runEngine") {
+                val input = call.argument<String>("input")!!
+                val profile = call.argument<String>("profile")!!
+                val channels = call.argument<String>("channels")!!
+                val intensity = call.argument<String>("intensity")!!
 
-                try {
-                    val cmd = buildTermuxCommand(
-                        input, profile, channels, intensity
+                val intent = Intent("com.termux.RUN_COMMAND").apply {
+                    setClassName(
+                        "com.termux",
+                        "com.termux.app.RunCommandService"
                     )
-
-                    Runtime.getRuntime().exec(cmd)
-
-                    result.success("Processing started in Termux")
-
-                } catch (e: Exception) {
-                    Log.e("CinemaAudio", "Engine error", e)
-                    result.error("ENGINE_FAIL", e.message, null)
+                    putExtra("com.termux.RUN_COMMAND_PATH",
+                        "/data/data/com.termux/files/home/cinema_engine/run.sh")
+                    putExtra(
+                        "com.termux.RUN_COMMAND_ARGUMENTS",
+                        arrayOf(input, profile, channels, intensity)
+                    )
+                    putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
                 }
+
+                startService(intent)
+                result.success("Engine started")
             } else {
                 result.notImplemented()
             }
         }
-    }
-
-    private fun buildTermuxCommand(
-        input: String,
-        profile: String,
-        channels: String,
-        intensity: String
-    ): String {
-
-        val script = "/data/data/com.termux/files/home/cinema_engine.sh"
-
-        return arrayOf(
-            "sh", "-c",
-            "am start --user 0 -n com.termux/.app.TermuxActivity " +
-                    "--es cmd \"$script '$input' '$profile' '$channels' '$intensity'\""
-        ).joinToString(" ")
     }
 }
