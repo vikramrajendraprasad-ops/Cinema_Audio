@@ -8,37 +8,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout your repo (this contains lib/main.dart)
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Install Flutter (stable)
+      # 2️⃣ Install Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # 3️⃣ Verify Flutter
+      # 3️⃣ Flutter doctor
       - name: Flutter doctor
         run: flutter doctor -v
 
-      # 4️⃣ Create NEW Flutter app (clean)
-      - name: Create Flutter app
-        run: |
-          flutter create cinema_audio
-          cd cinema_audio
-          flutter pub get
+      # 4️⃣ Get dependencies (file_picker etc.)
+      - name: Flutter pub get
+        run: flutter pub get
 
-      # 5️⃣ Build DEBUG APK
+      # 5️⃣ Build DEBUG APK (YOUR CODE)
       - name: Build debug APK
-        run: |
-          cd cinema_audio
-          flutter build apk --debug
+        run: flutter build apk --debug
 
-      # 6️⃣ Upload APK artifact
-      - name: Upload APK
+      # 6️⃣ Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Cinema_Audio-debug-apk
-          path: cinema_audio/build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
