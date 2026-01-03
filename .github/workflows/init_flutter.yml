@@ -1,7 +1,10 @@
-name: Init Flutter App (One Time)
+name: Init Flutter Project (Commit Android)
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   init:
@@ -15,14 +18,36 @@ jobs:
         with:
           channel: stable
 
-      - name: Initialize Flutter project
-        run: flutter create .
+      - name: Create Flutter app structure
+        run: |
+          flutter create --platforms=android --project-name cinema_audio .
+          rm -f lib/main.dart
 
-      - name: Upload generated files
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-generated
-          path: |
-            android
-            ios
-            pubspec.yaml
+      - name: Restore your main.dart
+        run: |
+          mkdir -p lib
+          cat << 'EOF' > lib/main.dart
+          import 'package:flutter/material.dart';
+          void main() {
+            runApp(const MyApp());
+          }
+          class MyApp extends StatelessWidget {
+            const MyApp({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return const MaterialApp(
+                home: Scaffold(
+                  body: Center(child: Text('Cinema Audio Ready')),
+                ),
+              );
+            }
+          }
+          EOF
+
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Initialize Flutter Android project"
+          git push
