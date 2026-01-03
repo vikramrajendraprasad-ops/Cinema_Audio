@@ -11,7 +11,7 @@ void main() {
    CONFIG
 ========================================================= */
 
-const bool creatorMode = true; // 🔒 set false before Play Store
+const bool creatorMode = true; // set false before Play Store
 
 /* =========================================================
    ENUMS (LOCKED CONTRACT)
@@ -78,18 +78,13 @@ class AudioCinemaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Audio Cinema Studio',
       debugShowCheckedModeBanner: false,
+      title: 'Audio Cinema Studio',
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0E0E11),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFE2B86C),
-          secondary: Color(0xFF8A8A8A),
-        ),
-        sliderTheme: const SliderThemeData(
-          activeTrackColor: Color(0xFFE2B86C),
-          thumbColor: Color(0xFFE2B86C),
         ),
       ),
       home: const CinemaHome(),
@@ -111,13 +106,13 @@ class CinemaHome extends StatefulWidget {
 class _CinemaHomeState extends State<CinemaHome> {
   String? selectedFile;
   String status = 'Idle';
+  bool isProcessing = false;
 
   Profile profile = Profile.cinema;
   Intensity intensity = Intensity.medium;
   Channels channels = Channels.stereo;
   Codec codec = Codec.aac;
 
-  /* ---------- FILE PICK ---------- */
   Future<void> pickFile() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.audio);
     if (res != null && res.files.single.path != null) {
@@ -128,11 +123,13 @@ class _CinemaHomeState extends State<CinemaHome> {
     }
   }
 
-  /* ---------- PROCESS ---------- */
   Future<void> process() async {
     if (selectedFile == null) return;
 
-    setState(() => status = 'Processing…');
+    setState(() {
+      status = 'Processing…';
+      isProcessing = true;
+    });
 
     await runEngine(
       inputPath: selectedFile!,
@@ -142,25 +139,24 @@ class _CinemaHomeState extends State<CinemaHome> {
       codec: codec,
     );
 
-    setState(() => status = 'Done');
+    setState(() {
+      status = 'Done';
+      isProcessing = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Audio Cinema Studio'),
-        centerTitle: true,
-        backgroundColor: Colors.black,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionTitle('SOURCE'),
-            _card(
-              child: Column(
+    final content = Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FadeSlide(delayMs: 80, child: section('SOURCE')),
+          FadeSlide(
+            delayMs: 120,
+            child: card(
+              Column(
                 children: [
                   ElevatedButton.icon(
                     icon: const Icon(Icons.library_music),
@@ -177,26 +173,35 @@ class _CinemaHomeState extends State<CinemaHome> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 18),
 
-            _sectionTitle('CINEMA PROFILE'),
-            _dropdown<Profile>(
+          FadeSlide(delayMs: 180, child: section('CINEMA PROFILE')),
+          FadeSlide(
+            delayMs: 220,
+            child: dropdown<Profile>(
               value: profile,
               items: creatorMode
                   ? Profile.values
                   : Profile.values.where((p) => p != Profile.atmos).toList(),
               onChanged: (v) => setState(() => profile = v!),
             ),
+          ),
 
-            _sectionTitle('INTENSITY'),
-            _segmented<Intensity>(
+          FadeSlide(delayMs: 260, child: section('INTENSITY')),
+          FadeSlide(
+            delayMs: 300,
+            child: segmented<Intensity>(
               values: Intensity.values,
               current: intensity,
               onTap: (v) => setState(() => intensity = v),
             ),
+          ),
 
-            _sectionTitle('CHANNELS'),
-            _segmented<Channels>(
+          FadeSlide(delayMs: 340, child: section('CHANNELS')),
+          FadeSlide(
+            delayMs: 380,
+            child: segmented<Channels>(
               values: Channels.values,
               current: channels,
               labels: const {
@@ -206,40 +211,64 @@ class _CinemaHomeState extends State<CinemaHome> {
               },
               onTap: (v) => setState(() => channels = v),
             ),
+          ),
 
-            if (creatorMode) ...[
-              _sectionTitle('CODEC (CREATOR MODE)'),
-              _dropdown<Codec>(
+          if (creatorMode) ...[
+            FadeSlide(delayMs: 420, child: section('CODEC (CREATOR MODE)')),
+            FadeSlide(
+              delayMs: 460,
+              child: dropdown<Codec>(
                 value: codec,
                 items: Codec.values,
                 onChanged: (v) => setState(() => codec = v!),
               ),
-            ],
-
-            const Spacer(),
-
-            ElevatedButton(
-              onPressed: selectedFile == null ? null : process,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE2B86C),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'PROCESS AUDIO',
-                style: TextStyle(fontSize: 16, letterSpacing: 1.2),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
-                status,
-                style: const TextStyle(color: Colors.white54),
-              ),
             ),
           ],
-        ),
+
+          const Spacer(),
+
+          ElevatedButton(
+            onPressed: selectedFile == null ? null : process,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE2B86C),
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text(
+              'PROCESS AUDIO',
+              style: TextStyle(letterSpacing: 1.2),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Text(
+              status,
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Audio Cinema Studio'),
+        centerTitle: true,
+        backgroundColor: Colors.black,
+      ),
+      body: Stack(
+        children: [
+          content,
+          if (isProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.65),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFE2B86C),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -248,7 +277,7 @@ class _CinemaHomeState extends State<CinemaHome> {
      UI HELPERS
   ========================================================= */
 
-  Widget _sectionTitle(String t) => Padding(
+  Widget section(String t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Text(
           t,
@@ -259,7 +288,7 @@ class _CinemaHomeState extends State<CinemaHome> {
         ),
       );
 
-  Widget _card({required Widget child}) => Container(
+  Widget card(Widget child) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF151518),
@@ -268,50 +297,47 @@ class _CinemaHomeState extends State<CinemaHome> {
         child: child,
       );
 
-  Widget _dropdown<T>({
+  Widget dropdown<T>({
     required T value,
     required List<T> items,
     required ValueChanged<T?> onChanged,
   }) =>
-      _card(
-        child: DropdownButton<T>(
+      card(
+        DropdownButton<T>(
           value: value,
           isExpanded: true,
-          dropdownColor: const Color(0xFF1A1A1D),
           underline: const SizedBox(),
+          dropdownColor: const Color(0xFF1A1A1D),
           items: items
-              .map(
-                (e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e.toString().split('.').last.toUpperCase()),
-                ),
-              )
+              .map((e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(e.toString().split('.').last.toUpperCase()),
+                  ))
               .toList(),
           onChanged: onChanged,
         ),
       );
 
-  Widget _segmented<T>({
+  Widget segmented<T>({
     required List<T> values,
     required T current,
     required ValueChanged<T> onTap,
     Map<T, String>? labels,
   }) =>
-      _card(
-        child: Row(
+      card(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: values.map((v) {
             final active = v == current;
             return GestureDetector(
               onTap: () => onTap(v),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 180),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: active
-                      ? const Color(0xFFE2B86C)
-                      : Colors.transparent,
+                  color:
+                      active ? const Color(0xFFE2B86C) : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -325,4 +351,54 @@ class _CinemaHomeState extends State<CinemaHome> {
           }).toList(),
         ),
       );
+}
+
+/* =========================================================
+   FADE + SLIDE ANIMATION
+========================================================= */
+
+class FadeSlide extends StatefulWidget {
+  final Widget child;
+  final int delayMs;
+
+  const FadeSlide({super.key, required this.child, this.delayMs = 0});
+
+  @override
+  State<FadeSlide> createState() => _FadeSlideState();
+}
+
+class _FadeSlideState extends State<FadeSlide>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _offset = Tween(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(_opacity);
+
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(position: _offset, child: widget.child),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 }
