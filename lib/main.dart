@@ -1,13 +1,16 @@
-
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const AudioCinemaApp());
+  runApp(const CinemaAudioApp());
 }
 
-class AudioCinemaApp extends StatelessWidget {
-  const AudioCinemaApp({super.key});
+/// MethodChannel for Android ↔ Flutter
+const MethodChannel _channel = MethodChannel('cinema_audio/engine');
+
+class CinemaAudioApp extends StatelessWidget {
+  const CinemaAudioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,8 +18,8 @@ class AudioCinemaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Cinema Audio',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: const CinemaHome(),
     );
@@ -34,12 +37,35 @@ class _CinemaHomeState extends State<CinemaHome> {
   String status = 'Idle';
   String? selectedFile;
 
-  String profile = 'Dolby Cinema';
-  String channels = 'Stereo';
-  String intensity = 'Medium';
+  String selectedProfile = 'Sony Clarity';
+  String selectedChannels = 'Stereo';
+  String selectedIntensity = 'Medium';
 
+  final List<String> profiles = [
+    'Dolby Cinema',
+    'Sony Clarity',
+    'JBL Punch',
+    'Bose Deep',
+  ];
+
+  final List<String> channels = [
+    'Stereo',
+    '5.1 Surround',
+    '7.1 Surround',
+  ];
+
+  final List<String> intensities = [
+    'Low',
+    'Medium',
+    'High',
+  ];
+
+  /// Pick audio file
   Future<void> pickAudio() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+    );
+
     if (result != null && result.files.single.path != null) {
       setState(() {
         selectedFile = result.files.single.path!;
@@ -48,26 +74,46 @@ class _CinemaHomeState extends State<CinemaHome> {
     }
   }
 
-  void sendToEngine() {
-    if (selectedFile == null) return;
+  /// Send data to Android → Termux → FFmpeg
+  Future<void> sendToEngine() async {
+    if (selectedFile == null) {
+      setState(() => status = 'No audio selected');
+      return;
+    }
 
-    setState(() {
-      status =
-          'Ready → $profile | $channels | $intensity\n(Send to Termux next)';
-    });
+    try {
+      final response = await _channel.invokeMethod(
+        'processAudio',
+        {
+          'inputPath': selectedFile,
+          'profile': selectedProfile,
+          'channels': selectedChannels,
+          'intensity': selectedIntensity,
+        },
+      );
 
-    // Termux bridge will be added later
+      setState(() {
+        status = response ?? 'Processing started';
+      });
+    } catch (e) {
+      setState(() {
+        status = 'Engine error: $e';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cinema Audio')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Cinema Audio'),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            /// Info card
             Card(
               color: Colors.deepPurple.withOpacity(0.15),
               child: const Padding(
@@ -79,20 +125,26 @@ class _CinemaHomeState extends State<CinemaHome> {
               ),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 30),
 
+            /// Pick audio
             ElevatedButton.icon(
               icon: const Icon(Icons.music_note),
               label: const Text('Pick Audio File'),
               onPressed: pickAudio,
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
-            Text('Status: $status', textAlign: TextAlign.center),
+            /// Status
+            Text(
+              'Status: $status',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
 
             if (selectedFile != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 selectedFile!,
                 style: const TextStyle(fontSize: 12),
@@ -101,50 +153,66 @@ class _CinemaHomeState extends State<CinemaHome> {
               ),
             ],
 
-            const Divider(height: 40),
+            const SizedBox(height: 30),
+            const Divider(),
 
-            DropdownButtonFormField(
-              value: profile,
-              items: const [
-                DropdownMenuItem(value: 'Dolby Cinema', child: Text('Dolby Cinema')),
-                DropdownMenuItem(value: 'Sony Clarity', child: Text('Sony Clarity')),
-                DropdownMenuItem(value: 'JBL Punch', child: Text('JBL Punch')),
-                DropdownMenuItem(value: 'Bose Deep', child: Text('Bose Deep')),
-              ],
-              onChanged: (v) => setState(() => profile = v!),
-              decoration: const InputDecoration(labelText: 'Cinema Profile'),
+            /// Profile
+            const Text('Cinema Profile'),
+            DropdownButton<String>(
+              value: selectedProfile,
+              isExpanded: true,
+              items: profiles
+                  .map(
+                    (p) => DropdownMenuItem(
+                      value: p,
+                      child: Text(p),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => selectedProfile = v!),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
-            DropdownButtonFormField(
-              value: channels,
-              items: const [
-                DropdownMenuItem(value: 'Stereo', child: Text('Stereo')),
-                DropdownMenuItem(value: '5.1', child: Text('5.1 Surround')),
-                DropdownMenuItem(value: '7.1', child: Text('7.1 Surround')),
-              ],
-              onChanged: (v) => setState(() => channels = v!),
-              decoration: const InputDecoration(labelText: 'Output Channels'),
+            /// Channels
+            const Text('Output Channels'),
+            DropdownButton<String>(
+              value: selectedChannels,
+              isExpanded: true,
+              items: channels
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c,
+                      child: Text(c),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => selectedChannels = v!),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
-            DropdownButtonFormField(
-              value: intensity,
-              items: const [
-                DropdownMenuItem(value: 'Low', child: Text('Low')),
-                DropdownMenuItem(value: 'Medium', child: Text('Medium')),
-                DropdownMenuItem(value: 'High', child: Text('High')),
-              ],
-              onChanged: (v) => setState(() => intensity = v!),
-              decoration: const InputDecoration(labelText: 'Profile Intensity'),
+            /// Intensity
+            const Text('Profile Intensity'),
+            DropdownButton<String>(
+              value: selectedIntensity,
+              isExpanded: true,
+              items: intensities
+                  .map(
+                    (i) => DropdownMenuItem(
+                      value: i,
+                      child: Text(i),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => selectedIntensity = v!),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 30),
 
+            /// Send button
             ElevatedButton(
-              onPressed: selectedFile == null ? null : sendToEngine,
+              onPressed: sendToEngine,
               child: const Text('Send to Cinema Engine'),
             ),
           ],
