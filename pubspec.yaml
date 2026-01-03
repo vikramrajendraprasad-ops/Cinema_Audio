@@ -12,7 +12,9 @@ dependencies:
     sdk: flutter
 
   file_picker: ^8.3.7
-  ffmpeg_kit_flutter_full_gpl: ^4.1.0
+  
+  # ⚠️ UPDATED: Version 6.0.3 is required for Android 14 / Gradle 8+
+  ffmpeg_kit_flutter_full_gpl: ^6.0.3
 
 flutter:
   uses-material-design: true
