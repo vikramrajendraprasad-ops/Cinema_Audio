@@ -1,7 +1,17 @@
 
+name: Build Cinema Audio APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
+      # Java 17 is required for modern Android builds
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -11,7 +21,6 @@
         with:
           channel: stable
           
-      # REPLACE THE OLD "Install deps" STEP WITH THIS BLOCK:
       - name: Install deps
         run: |
           flutter clean
