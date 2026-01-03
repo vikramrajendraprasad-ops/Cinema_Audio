@@ -7,9 +7,9 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity: FlutterActivity() {
 
-    private val CHANNEL = "cinema/termux"
+    private val CHANNEL = "cinema.engine/termux"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -20,30 +20,45 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
 
             if (call.method == "runEngine") {
-                val input = call.argument<String>("input")!!
-                val profile = call.argument<String>("profile")!!
-                val channels = call.argument<String>("channels")!!
-                val intensity = call.argument<String>("intensity")!!
+                val cmd = call.argument<String>("cmd") ?: ""
 
-                val intent = Intent("com.termux.RUN_COMMAND").apply {
-                    setClassName(
-                        "com.termux",
-                        "com.termux.app.RunCommandService"
-                    )
-                    putExtra("com.termux.RUN_COMMAND_PATH",
-                        "/data/data/com.termux/files/home/cinema_engine/run.sh")
-                    putExtra(
-                        "com.termux.RUN_COMMAND_ARGUMENTS",
-                        arrayOf(input, profile, channels, intensity)
-                    )
-                    putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
-                }
+                runTermux(cmd)
+                result.success(true)
 
-                startService(intent)
-                result.success("Engine started")
             } else {
                 result.notImplemented()
             }
         }
+    }
+
+    private fun runTermux(command: String) {
+        val intent = Intent("com.termux.RUN_COMMAND")
+
+        intent.setClassName(
+            "com.termux",
+            "com.termux.app.RunCommandReceiver"
+        )
+
+        intent.putExtra(
+            "com.termux.RUN_COMMAND_PATH",
+            "/data/data/com.termux/files/usr/bin/bash"
+        )
+
+        intent.putExtra(
+            "com.termux.RUN_COMMAND_ARGUMENTS",
+            arrayOf("-lc", command)
+        )
+
+        intent.putExtra(
+            "com.termux.RUN_COMMAND_WORKDIR",
+            "/data/data/com.termux/files/home"
+        )
+
+        intent.putExtra(
+            "com.termux.RUN_COMMAND_BACKGROUND",
+            false   // TRUE = silent but unreliable
+        )
+
+        startActivity(intent)
     }
 }
