@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    
+    <!-- ⚠️ REQUIRED: This allows your app to trigger Termux -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <application
         android:label="Cinema Audio"
@@ -19,7 +22,6 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             
-            <!-- This tells Flutter to switch to NormalTheme after the app loads -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
