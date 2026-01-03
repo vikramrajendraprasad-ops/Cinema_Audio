@@ -1,4 +1,6 @@
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() {
   runApp(const CinemaAudioApp());
@@ -33,56 +35,57 @@ class CinemaHomePage extends StatefulWidget {
 }
 
 class _CinemaHomePageState extends State<CinemaHomePage> {
+  String? selectedFilePath;
+
   String selectedProfile = "Dolby Cinema";
   String selectedChannels = "Stereo";
   String selectedIntensity = "Medium";
 
-  final List<String> profiles = [
-    "Dolby Cinema",
-    "Sony Clarity",
-    "JBL Punch",
-    "Bose Deep",
-  ];
-
-  final List<String> channels = [
-    "Stereo",
-    "5.1",
-    "7.1",
-  ];
-
-  final List<String> intensities = [
-    "Low",
-    "Medium",
-    "High",
-  ];
+  final profiles = ["Dolby Cinema", "Sony Clarity", "JBL Punch", "Bose Deep"];
+  final channels = ["Stereo", "5.1", "7.1"];
+  final intensities = ["Low", "Medium", "High"];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Cinema Audio"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Cinema Audio")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionTitle("Cinema Profile"),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.folder_open),
+              label: const Text("Select Audio File"),
+              onPressed: _pickAudioFile,
+            ),
+
+            if (selectedFilePath != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                selectedFilePath!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+
+            const SizedBox(height: 24),
+
+            _section("Cinema Profile"),
             _dropdown(profiles, selectedProfile, (v) {
               setState(() => selectedProfile = v);
             }),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            _sectionTitle("Output Channels"),
+            _section("Output Channels"),
             _dropdown(channels, selectedChannels, (v) {
               setState(() => selectedChannels = v);
             }),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            _sectionTitle("Intensity"),
+            _section("Intensity"),
             _dropdown(intensities, selectedIntensity, (v) {
               setState(() => selectedIntensity = v);
             }),
@@ -90,15 +93,9 @@ class _CinemaHomePageState extends State<CinemaHomePage> {
             const Spacer(),
 
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
               icon: const Icon(Icons.movie),
-              label: const Text(
-                "Convert Audio",
-                style: TextStyle(fontSize: 18),
-              ),
-              onPressed: _onConvertPressed,
+              label: const Text("Convert Audio"),
+              onPressed: selectedFilePath == null ? null : _convertStub,
             ),
           ],
         ),
@@ -106,17 +103,8 @@ class _CinemaHomePageState extends State<CinemaHomePage> {
     );
   }
 
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+  Widget _section(String title) {
+    return Text(title, style: const TextStyle(fontWeight: FontWeight.bold));
   }
 
   Widget _dropdown(
@@ -127,32 +115,36 @@ class _CinemaHomePageState extends State<CinemaHomePage> {
     return DropdownButtonFormField<String>(
       value: value,
       items: items
-          .map(
-            (e) => DropdownMenuItem(
-              value: e,
-              child: Text(e),
-            ),
-          )
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
-      onChanged: (v) {
-        if (v != null) onChanged(v);
-      },
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-      ),
+      onChanged: (v) => v != null ? onChanged(v) : null,
+      decoration: const InputDecoration(border: OutlineInputBorder()),
     );
   }
 
-  void _onConvertPressed() {
+  Future<void> _pickAudioFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        selectedFilePath = result.files.single.path!;
+      });
+    }
+  }
+
+  void _convertStub() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Conversion Stub"),
+        title: const Text("Conversion Ready"),
         content: Text(
+          "Input:\n$selectedFilePath\n\n"
           "Profile: $selectedProfile\n"
           "Channels: $selectedChannels\n"
           "Intensity: $selectedIntensity\n\n"
-          "FFmpeg engine will be wired here.",
+          "FFmpeg engine will be triggered next.",
         ),
         actions: [
           TextButton(
