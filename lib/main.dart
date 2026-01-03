@@ -1,72 +1,18 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:android_intent_plus/android_intent.dart';
 
 void main() {
   runApp(const AudioCinemaApp());
 }
 
 /* =========================================================
-   CONFIG
+   METHOD CHANNEL (LOCKED)
 ========================================================= */
 
-const bool creatorMode = true; // set false before Play Store
-
-/* =========================================================
-   ENUMS (LOCKED CONTRACT)
-========================================================= */
-
-enum Profile { cinema, clarity, punch, deep, atmos }
-enum Intensity { low, medium, high }
-enum Channels { stereo, fiveOne, sevenOne }
-enum Codec { aac, wav, flac, mp3, ac3, eac3 }
-
-/* =========================================================
-   MAPPERS
-========================================================= */
-
-String profileStr(Profile p) => p.name;
-String intensityStr(Intensity i) => i.name;
-
-String channelsStr(Channels c) {
-  switch (c) {
-    case Channels.fiveOne:
-      return '5.1';
-    case Channels.sevenOne:
-      return '7.1';
-    default:
-      return 'stereo';
-  }
-}
-
-String codecStr(Codec c) => c.name;
-
-/* =========================================================
-   ENGINE RUNNER (LOCKED)
-========================================================= */
-
-Future<void> runEngine({
-  required String inputPath,
-  required Profile profile,
-  required Intensity intensity,
-  required Channels channels,
-  required Codec codec,
-}) async {
-  final intent = AndroidIntent(
-    action: 'com.termux.RUN_COMMAND',
-    package: 'com.termux',
-    arguments: {
-      'command':
-          '/data/data/com.termux/files/home/cinema_engine/engine.sh',
-      'arguments':
-          '$inputPath ${profileStr(profile)} ${intensityStr(intensity)} ${channelsStr(channels)} ${codecStr(codec)}',
-      'background': true,
-    },
-  );
-
-  await intent.launch();
-}
+const MethodChannel _engineChannel =
+    MethodChannel('cinema.engine/termux');
 
 /* =========================================================
    APP
@@ -105,13 +51,15 @@ class CinemaHome extends StatefulWidget {
 
 class _CinemaHomeState extends State<CinemaHome> {
   String? selectedFile;
-  String status = 'Idle';
   bool isProcessing = false;
+  String status = 'Idle';
 
-  Profile profile = Profile.cinema;
-  Intensity intensity = Intensity.medium;
-  Channels channels = Channels.stereo;
-  Codec codec = Codec.aac;
+  String profile = 'cinema';
+  String intensity = 'medium';
+  String channels = 'stereo';
+  String codec = 'aac';
+
+  /* ================= FILE PICK ================= */
 
   Future<void> pickFile() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.audio);
@@ -123,133 +71,45 @@ class _CinemaHomeState extends State<CinemaHome> {
     }
   }
 
-  Future<void> process() async {
+  /* ================= ENGINE CALL ================= */
+
+  Future<void> processAudio() async {
     if (selectedFile == null) return;
 
     setState(() {
-      status = 'Processing…';
       isProcessing = true;
+      status = 'Processing…';
     });
 
-    await runEngine(
-      inputPath: selectedFile!,
-      profile: profile,
-      intensity: intensity,
-      channels: channels,
-      codec: codec,
-    );
+    final String cmd = '''
+cd ~/cinema_engine &&
+./engine.sh "$selectedFile" $profile $intensity $channels $codec
+''';
 
-    setState(() {
-      status = 'Done';
-      isProcessing = false;
-    });
+    try {
+      await _engineChannel.invokeMethod(
+        'runEngine',
+        {'cmd': cmd},
+      );
+
+      setState(() {
+        status = 'Done (see Termux)';
+      });
+    } catch (e) {
+      setState(() {
+        status = 'Engine error';
+      });
+    } finally {
+      setState(() {
+        isProcessing = false;
+      });
+    }
   }
+
+  /* ================= UI ================= */
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FadeSlide(delayMs: 80, child: section('SOURCE')),
-          FadeSlide(
-            delayMs: 120,
-            child: card(
-              Column(
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.library_music),
-                    label: const Text('Pick Audio File'),
-                    onPressed: pickFile,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    selectedFile ?? 'No file selected',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          FadeSlide(delayMs: 180, child: section('CINEMA PROFILE')),
-          FadeSlide(
-            delayMs: 220,
-            child: dropdown<Profile>(
-              value: profile,
-              items: creatorMode
-                  ? Profile.values
-                  : Profile.values.where((p) => p != Profile.atmos).toList(),
-              onChanged: (v) => setState(() => profile = v!),
-            ),
-          ),
-
-          FadeSlide(delayMs: 260, child: section('INTENSITY')),
-          FadeSlide(
-            delayMs: 300,
-            child: segmented<Intensity>(
-              values: Intensity.values,
-              current: intensity,
-              onTap: (v) => setState(() => intensity = v),
-            ),
-          ),
-
-          FadeSlide(delayMs: 340, child: section('CHANNELS')),
-          FadeSlide(
-            delayMs: 380,
-            child: segmented<Channels>(
-              values: Channels.values,
-              current: channels,
-              labels: const {
-                Channels.stereo: 'Stereo',
-                Channels.fiveOne: '5.1',
-                Channels.sevenOne: '7.1',
-              },
-              onTap: (v) => setState(() => channels = v),
-            ),
-          ),
-
-          if (creatorMode) ...[
-            FadeSlide(delayMs: 420, child: section('CODEC (CREATOR MODE)')),
-            FadeSlide(
-              delayMs: 460,
-              child: dropdown<Codec>(
-                value: codec,
-                items: Codec.values,
-                onChanged: (v) => setState(() => codec = v!),
-              ),
-            ),
-          ],
-
-          const Spacer(),
-
-          ElevatedButton(
-            onPressed: selectedFile == null ? null : process,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE2B86C),
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-            child: const Text(
-              'PROCESS AUDIO',
-              style: TextStyle(letterSpacing: 1.2),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Text(
-              status,
-              style: const TextStyle(color: Colors.white54),
-            ),
-          ),
-        ],
-      ),
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Audio Cinema Studio'),
@@ -258,7 +118,85 @@ class _CinemaHomeState extends State<CinemaHome> {
       ),
       body: Stack(
         children: [
-          content,
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _section('SOURCE'),
+                _card(
+                  Column(
+                    children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.library_music),
+                        label: const Text('Pick Audio File'),
+                        onPressed: pickFile,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        selectedFile ?? 'No file selected',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                _section('PROFILE'),
+                _dropdown(
+                  value: profile,
+                  items: const ['cinema', 'clarity', 'punch', 'deep', 'atmos'],
+                  onChanged: (v) => setState(() => profile = v!),
+                ),
+
+                _section('INTENSITY'),
+                _segmented(
+                  values: const ['low', 'medium', 'high'],
+                  current: intensity,
+                  onTap: (v) => setState(() => intensity = v),
+                ),
+
+                _section('CHANNELS'),
+                _segmented(
+                  values: const ['stereo', '5.1', '7.1'],
+                  current: channels,
+                  onTap: (v) => setState(() => channels = v),
+                ),
+
+                _section('CODEC (CREATOR MODE)'),
+                _dropdown(
+                  value: codec,
+                  items: const ['aac', 'mp3', 'ac3', 'eac3', 'wav', 'flac'],
+                  onChanged: (v) => setState(() => codec = v!),
+                ),
+
+                const Spacer(),
+
+                ElevatedButton(
+                  onPressed: selectedFile == null ? null : processAudio,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE2B86C),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text(
+                    'PROCESS AUDIO',
+                    style: TextStyle(letterSpacing: 1.2),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    status,
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           if (isProcessing)
             Container(
               color: Colors.black.withOpacity(0.65),
@@ -273,11 +211,9 @@ class _CinemaHomeState extends State<CinemaHome> {
     );
   }
 
-  /* =========================================================
-     UI HELPERS
-  ========================================================= */
+  /* ================= UI HELPERS ================= */
 
-  Widget section(String t) => Padding(
+  Widget _section(String t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Text(
           t,
@@ -288,7 +224,7 @@ class _CinemaHomeState extends State<CinemaHome> {
         ),
       );
 
-  Widget card(Widget child) => Container(
+  Widget _card(Widget child) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF151518),
@@ -297,13 +233,13 @@ class _CinemaHomeState extends State<CinemaHome> {
         child: child,
       );
 
-  Widget dropdown<T>({
-    required T value,
-    required List<T> items,
-    required ValueChanged<T?> onChanged,
+  Widget _dropdown({
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
   }) =>
-      card(
-        DropdownButton<T>(
+      _card(
+        DropdownButton<String>(
           value: value,
           isExpanded: true,
           underline: const SizedBox(),
@@ -311,20 +247,19 @@ class _CinemaHomeState extends State<CinemaHome> {
           items: items
               .map((e) => DropdownMenuItem(
                     value: e,
-                    child: Text(e.toString().split('.').last.toUpperCase()),
+                    child: Text(e.toUpperCase()),
                   ))
               .toList(),
           onChanged: onChanged,
         ),
       );
 
-  Widget segmented<T>({
-    required List<T> values,
-    required T current,
-    required ValueChanged<T> onTap,
-    Map<T, String>? labels,
+  Widget _segmented({
+    required List<String> values,
+    required String current,
+    required ValueChanged<String> onTap,
   }) =>
-      card(
+      _card(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: values.map((v) {
@@ -341,7 +276,7 @@ class _CinemaHomeState extends State<CinemaHome> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  labels?[v] ?? v.toString().split('.').last.toUpperCase(),
+                  v.toUpperCase(),
                   style: TextStyle(
                     color: active ? Colors.black : Colors.white70,
                   ),
@@ -351,54 +286,4 @@ class _CinemaHomeState extends State<CinemaHome> {
           }).toList(),
         ),
       );
-}
-
-/* =========================================================
-   FADE + SLIDE ANIMATION
-========================================================= */
-
-class FadeSlide extends StatefulWidget {
-  final Widget child;
-  final int delayMs;
-
-  const FadeSlide({super.key, required this.child, this.delayMs = 0});
-
-  @override
-  State<FadeSlide> createState() => _FadeSlideState();
-}
-
-class _FadeSlideState extends State<FadeSlide>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacity;
-  late Animation<Offset> _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
-
-    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _offset = Tween(begin: const Offset(0, 0.08), end: Offset.zero)
-        .animate(_opacity);
-
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(position: _offset, child: widget.child),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 }
