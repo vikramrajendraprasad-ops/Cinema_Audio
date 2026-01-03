@@ -6,9 +6,6 @@ void main() {
   runApp(const CinemaAudioApp());
 }
 
-/// MethodChannel for Android ↔ Flutter
-const MethodChannel _channel = MethodChannel('cinema_audio/engine');
-
 class CinemaAudioApp extends StatelessWidget {
   const CinemaAudioApp({super.key});
 
@@ -19,7 +16,7 @@ class CinemaAudioApp extends StatelessWidget {
       title: 'Cinema Audio',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorSchemeSeed: Colors.deepPurple,
       ),
       home: const CinemaHome(),
     );
@@ -34,6 +31,8 @@ class CinemaHome extends StatefulWidget {
 }
 
 class _CinemaHomeState extends State<CinemaHome> {
+  static const MethodChannel _channel = MethodChannel('cinema/termux');
+
   String status = 'Idle';
   String? selectedFile;
 
@@ -54,13 +53,12 @@ class _CinemaHomeState extends State<CinemaHome> {
     '7.1 Surround',
   ];
 
-  final List<String> intensities = [
+  final List<String> intensityLevels = [
     'Low',
     'Medium',
     'High',
   ];
 
-  /// Pick audio file
   Future<void> pickAudio() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.audio,
@@ -74,30 +72,27 @@ class _CinemaHomeState extends State<CinemaHome> {
     }
   }
 
-  /// Send data to Android → Termux → FFmpeg
   Future<void> sendToEngine() async {
-    if (selectedFile == null) {
-      setState(() => status = 'No audio selected');
-      return;
-    }
+    if (selectedFile == null) return;
+
+    setState(() {
+      status = 'Processing...';
+    });
 
     try {
-      final response = await _channel.invokeMethod(
-        'processAudio',
-        {
-          'inputPath': selectedFile,
-          'profile': selectedProfile,
-          'channels': selectedChannels,
-          'intensity': selectedIntensity,
-        },
-      );
+      await _channel.invokeMethod('runEngine', {
+        'input': selectedFile!,
+        'profile': selectedProfile,
+        'channels': selectedChannels,
+        'intensity': selectedIntensity,
+      });
 
       setState(() {
-        status = response ?? 'Processing started';
+        status = 'Sent to Cinema Engine';
       });
     } catch (e) {
       setState(() {
-        status = 'Engine error: $e';
+        status = 'Engine Error';
       });
     }
   }
@@ -108,12 +103,10 @@ class _CinemaHomeState extends State<CinemaHome> {
       appBar: AppBar(
         title: const Text('Cinema Audio'),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
           children: [
-            /// Info card
             Card(
               color: Colors.deepPurple.withOpacity(0.15),
               child: const Padding(
@@ -124,27 +117,22 @@ class _CinemaHomeState extends State<CinemaHome> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
 
-            const SizedBox(height: 30),
-
-            /// Pick audio
             ElevatedButton.icon(
               icon: const Icon(Icons.music_note),
               label: const Text('Pick Audio File'),
               onPressed: pickAudio,
             ),
 
-            const SizedBox(height: 20),
-
-            /// Status
+            const SizedBox(height: 16),
             Text(
               'Status: $status',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
             ),
 
             if (selectedFile != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 selectedFile!,
                 style: const TextStyle(fontSize: 12),
@@ -153,14 +141,11 @@ class _CinemaHomeState extends State<CinemaHome> {
               ),
             ],
 
-            const SizedBox(height: 30),
-            const Divider(),
+            const Divider(height: 32),
 
-            /// Profile
             const Text('Cinema Profile'),
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: selectedProfile,
-              isExpanded: true,
               items: profiles
                   .map(
                     (p) => DropdownMenuItem(
@@ -172,13 +157,11 @@ class _CinemaHomeState extends State<CinemaHome> {
               onChanged: (v) => setState(() => selectedProfile = v!),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            /// Channels
             const Text('Output Channels'),
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: selectedChannels,
-              isExpanded: true,
               items: channels
                   .map(
                     (c) => DropdownMenuItem(
@@ -190,14 +173,12 @@ class _CinemaHomeState extends State<CinemaHome> {
               onChanged: (v) => setState(() => selectedChannels = v!),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            /// Intensity
             const Text('Profile Intensity'),
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: selectedIntensity,
-              isExpanded: true,
-              items: intensities
+              items: intensityLevels
                   .map(
                     (i) => DropdownMenuItem(
                       value: i,
@@ -208,9 +189,8 @@ class _CinemaHomeState extends State<CinemaHome> {
               onChanged: (v) => setState(() => selectedIntensity = v!),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 32),
 
-            /// Send button
             ElevatedButton(
               onPressed: sendToEngine,
               child: const Text('Send to Cinema Engine'),
