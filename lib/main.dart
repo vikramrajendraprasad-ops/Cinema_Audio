@@ -1,22 +1,10 @@
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'engine/cinema_engine.dart';
 
 void main() {
   runApp(const AudioCinemaApp());
 }
-
-/* =========================================================
-   METHOD CHANNEL (LOCKED)
-========================================================= */
-
-const MethodChannel _engineChannel =
-    MethodChannel('cinema.engine/termux');
-
-/* =========================================================
-   APP
-========================================================= */
 
 class AudioCinemaApp extends StatelessWidget {
   const AudioCinemaApp({super.key});
@@ -28,19 +16,13 @@ class AudioCinemaApp extends StatelessWidget {
       title: 'Audio Cinema Studio',
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0E0E11),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFE2B86C),
-        ),
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFFD4AF37), // cinema gold
       ),
       home: const CinemaHome(),
     );
   }
 }
-
-/* =========================================================
-   HOME
-========================================================= */
 
 class CinemaHome extends StatefulWidget {
   const CinemaHome({super.key});
@@ -50,240 +32,231 @@ class CinemaHome extends StatefulWidget {
 }
 
 class _CinemaHomeState extends State<CinemaHome> {
-  String? selectedFile;
-  bool isProcessing = false;
-  String status = 'Idle';
+  String? inputPath;
+  String status = "Idle";
 
-  String profile = 'cinema';
-  String intensity = 'medium';
-  String channels = 'stereo';
-  String codec = 'aac';
+  String profile = "cinema";
+  String intensity = "medium";
+  String channels = "stereo";
+  String codec = "aac";
 
-  /* ================= FILE PICK ================= */
+  bool processing = false;
 
-  Future<void> pickFile() async {
-    final res = await FilePicker.platform.pickFiles(type: FileType.audio);
-    if (res != null && res.files.single.path != null) {
+  // ================= FILE PICK =================
+
+  Future<void> pickAudio() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+    );
+
+    if (result != null && result.files.single.path != null) {
       setState(() {
-        selectedFile = res.files.single.path!;
-        status = 'Audio selected';
+        inputPath = result.files.single.path!;
+        status = "Audio selected";
       });
     }
   }
 
-  /* ================= ENGINE CALL ================= */
+  // ================= PROCESS AUDIO =================
 
   Future<void> processAudio() async {
-    if (selectedFile == null) return;
+    if (inputPath == null) return;
 
     setState(() {
-      isProcessing = true;
-      status = 'Processing…';
+      processing = true;
+      status = "Processing...";
     });
 
-    final String cmd = '''
-cd ~/cinema_engine &&
-./engine.sh "$selectedFile" $profile $intensity $channels $codec
-''';
-
     try {
-      await _engineChannel.invokeMethod(
-        'runEngine',
-        {'cmd': cmd},
+      final output = await CinemaEngine.process(
+        inputPath: inputPath!,
+        profile: profile,
+        intensity: intensity,
+        channels: channels,
+        codec: codec,
       );
 
       setState(() {
-        status = 'Done (see Termux)';
+        status = "Done\n$output";
       });
     } catch (e) {
       setState(() {
-        status = 'Engine error';
+        status = "Engine error";
       });
     } finally {
       setState(() {
-        isProcessing = false;
+        processing = false;
       });
     }
   }
 
-  /* ================= UI ================= */
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Audio Cinema Studio'),
+        title: const Text("Audio Cinema Studio"),
         centerTitle: true,
-        backgroundColor: Colors.black,
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _section('SOURCE'),
-                _card(
-                  Column(
-                    children: [
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.library_music),
-                        label: const Text('Pick Audio File'),
-                        onPressed: pickFile,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        selectedFile ?? 'No file selected',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                _section('PROFILE'),
-                _dropdown(
-                  value: profile,
-                  items: const ['cinema', 'clarity', 'punch', 'deep', 'atmos'],
-                  onChanged: (v) => setState(() => profile = v!),
-                ),
-
-                _section('INTENSITY'),
-                _segmented(
-                  values: const ['low', 'medium', 'high'],
-                  current: intensity,
-                  onTap: (v) => setState(() => intensity = v),
-                ),
-
-                _section('CHANNELS'),
-                _segmented(
-                  values: const ['stereo', '5.1', '7.1'],
-                  current: channels,
-                  onTap: (v) => setState(() => channels = v),
-                ),
-
-                _section('CODEC (CREATOR MODE)'),
-                _dropdown(
-                  value: codec,
-                  items: const ['aac', 'mp3', 'ac3', 'eac3', 'wav', 'flac'],
-                  onChanged: (v) => setState(() => codec = v!),
-                ),
-
-                const Spacer(),
-
-                ElevatedButton(
-                  onPressed: selectedFile == null ? null : processAudio,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE2B86C),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'PROCESS AUDIO',
-                    style: TextStyle(letterSpacing: 1.2),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    status,
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ),
-              ],
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: ListView(
+          children: [
+            // SOURCE
+            section("SOURCE"),
+            ElevatedButton.icon(
+              onPressed: pickAudio,
+              icon: const Icon(Icons.library_music),
+              label: const Text("Pick Audio File"),
             ),
-          ),
-
-          if (isProcessing)
-            Container(
-              color: Colors.black.withOpacity(0.65),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFE2B86C),
+            if (inputPath != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  inputPath!,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
+
+            const SizedBox(height: 24),
+
+            // PROFILE
+            section("PROFILE"),
+            dropdown(
+              value: profile,
+              items: const {
+                "cinema": "Cinema",
+                "clarity": "Clarity",
+                "punch": "Punch",
+                "depth": "Depth",
+              },
+              onChanged: (v) => setState(() => profile = v),
             ),
-        ],
+
+            const SizedBox(height: 16),
+
+            // INTENSITY
+            section("INTENSITY"),
+            segmented(
+              value: intensity,
+              options: const {
+                "low": "Low",
+                "medium": "Medium",
+                "high": "High",
+              },
+              onChanged: (v) => setState(() => intensity = v),
+            ),
+
+            const SizedBox(height: 16),
+
+            // CHANNELS
+            section("CHANNELS"),
+            segmented(
+              value: channels,
+              options: const {
+                "stereo": "Stereo",
+                "5.1": "5.1",
+                "7.1": "7.1",
+              },
+              onChanged: (v) => setState(() => channels = v),
+            ),
+
+            const SizedBox(height: 16),
+
+            // CODEC
+            section("CODEC (Creator mode)"),
+            dropdown(
+              value: codec,
+              items: const {
+                "aac": "AAC",
+                "mp3": "MP3",
+                "ac3": "AC3",
+                "eac3": "EAC3",
+              },
+              onChanged: (v) => setState(() => codec = v),
+            ),
+
+            const SizedBox(height: 30),
+
+            // PROCESS BUTTON
+            ElevatedButton(
+              onPressed: processing ? null : processAudio,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: const StadiumBorder(),
+              ),
+              child: processing
+                  ? const CircularProgressIndicator()
+                  : const Text(
+                      "PROCESS AUDIO",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // STATUS
+            Text(
+              status,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /* ================= UI HELPERS ================= */
+  // ================= WIDGET HELPERS =================
 
-  Widget _section(String t) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text(
-          t,
-          style: const TextStyle(
-            color: Color(0xFFE2B86C),
-            letterSpacing: 1.1,
-          ),
+  Widget section(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Color(0xFFD4AF37),
+          letterSpacing: 1.5,
+          fontWeight: FontWeight.bold,
         ),
-      );
+      ),
+    );
+  }
 
-  Widget _card(Widget child) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF151518),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: child,
-      );
-
-  Widget _dropdown({
+  Widget dropdown({
     required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) =>
-      _card(
-        DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          underline: const SizedBox(),
-          dropdownColor: const Color(0xFF1A1A1D),
-          items: items
-              .map((e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(e.toUpperCase()),
-                  ))
-              .toList(),
-          onChanged: onChanged,
-        ),
-      );
+    required Map<String, String> items,
+    required Function(String) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items.entries
+          .map((e) => DropdownMenuItem(
+                value: e.key,
+                child: Text(e.value),
+              ))
+          .toList(),
+      onChanged: (v) => onChanged(v!),
+    );
+  }
 
-  Widget _segmented({
-    required List<String> values,
-    required String current,
-    required ValueChanged<String> onTap,
-  }) =>
-      _card(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: values.map((v) {
-            final active = v == current;
-            return GestureDetector(
-              onTap: () => onTap(v),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color:
-                      active ? const Color(0xFFE2B86C) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  v.toUpperCase(),
-                  style: TextStyle(
-                    color: active ? Colors.black : Colors.white70,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
+  Widget segmented({
+    required String value,
+    required Map<String, String> options,
+    required Function(String) onChanged,
+  }) {
+    return Wrap(
+      spacing: 10,
+      children: options.entries.map((e) {
+        final selected = value == e.key;
+        return ChoiceChip(
+          label: Text(e.value),
+          selected: selected,
+          onSelected: (_) => onChanged(e.key),
+        );
+      }).toList(),
+    );
+  }
 }
