@@ -1,5 +1,6 @@
+
 name: cinema_audio
-description: Audio Cinema Studio – External FFmpeg processor
+description: Cinema Audio – External FFmpeg processor
 publish_to: "none"
 
 version: 1.0.0+1
