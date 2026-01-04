@@ -1,5 +1,5 @@
-name: cinema_audio
-description: Cinema-grade audio enhancement engine
+name: audio_cinema_studio
+description: Cinema-grade offline audio processing using FFmpeg
 publish_to: "none"
 
 version: 1.0.0+1
@@ -12,9 +12,11 @@ dependencies:
     sdk: flutter
 
   file_picker: ^8.3.7
-  
-  # ⚠️ UPDATED: Version 6.0.3 is required for Android 14 / Gradle 8+
-  ffmpeg_kit_flutter_full_gpl: ^6.0.3
+  ffmpeg_kit_flutter_full_gpl: 4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
