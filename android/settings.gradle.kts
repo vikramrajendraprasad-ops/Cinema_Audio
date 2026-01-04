@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "audio_cinema_studio"
+rootProject.name = "Cinema_Audio"
 include(":app")
