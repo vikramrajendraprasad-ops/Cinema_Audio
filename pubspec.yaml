@@ -1,5 +1,5 @@
-name: audio_cinema_studio
-description: Cinema-grade offline audio processing using FFmpeg
+name: cinema_audio_clean
+description: Cinema Audio Studio – AI assisted audio engine
 publish_to: "none"
 
 version: 1.0.0+1
@@ -11,8 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Safe, v2-embedding compatible
   file_picker: ^8.3.7
-  ffmpeg_kit_flutter_full_gpl: 4.5.1
 
 dev_dependencies:
   flutter_test:
