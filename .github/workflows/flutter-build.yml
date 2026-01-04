@@ -1,4 +1,3 @@
-
 name: Build Cinema Audio APK
 
 on:
@@ -9,27 +8,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # 1️⃣ Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Java 17 is required for modern Android builds
-      - uses: actions/setup-java@v4
+      # 2️⃣ Java 17 (required)
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - uses: subosito/flutter-action@v2
+      # 3️⃣ Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
-          
-      - name: Install deps
+          cache: true
+
+      # 4️⃣ ACCEPT ANDROID LICENSES (CRITICAL)
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses
+
+      # 5️⃣ HARD CLEAN (IMPORTANT FOR FFmpegKit)
+      - name: Clean build caches
         run: |
           flutter clean
+          rm -rf ~/.gradle/caches
+          rm -rf ~/.pub-cache/hosted/pub.dev/ffmpeg_kit_flutter*
           flutter pub get
 
+      # 6️⃣ Build APK
       - name: Build debug APK
         run: flutter build apk --debug
 
-      - uses: actions/upload-artifact@v4
+      # 7️⃣ Upload artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: cinema_audio_debug_apk
           path: build/app/outputs/flutter-apk/app-debug.apk
