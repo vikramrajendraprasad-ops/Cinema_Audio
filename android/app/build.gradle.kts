@@ -1,20 +1,28 @@
 
+import java.util.Properties
+import java.io.FileInputStream
+
+val flutterRoot = rootProject.projectDir.parentFile
+
+apply {
+    from("${flutterRoot}/packages/flutter_tools/gradle/flutter.gradle")
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.cinema_audio"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.example.cinema_audio"
         minSdk = 21
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        targetSdk = 33
+        versionCode = 1
+        versionName = "1.0"
     }
 
     compileOptions {
@@ -27,19 +35,12 @@ android {
     }
 
     buildTypes {
-        getByName("debug") {
-            isMinifyEnabled = false
-        }
         getByName("release") {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.7.10")
 }
